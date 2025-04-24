@@ -1,0 +1,12 @@
+version: 2
+project_name: infrastructure-agent
+snapshot:
+  version_template: 0.0.0
+
+release:
+  disable: true
+
+checksum:
+  disable: true
+
+builds:

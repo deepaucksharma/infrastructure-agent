@@ -1,0 +1,12 @@
+slug: ddsketch_impl
+phase: P0
+module: sketch/
+blueprint:
+  epic: A2-E1
+  story: A2-S2
+acceptance:
+  - p95/p99 error ≤ 1% with γ = 0.0075
+  - efficient memory usage with sparse representation
+  - serialization/deserialization support for transport
+  - merge capability for distributed aggregation
+  - threadsafe operations for concurrent updates

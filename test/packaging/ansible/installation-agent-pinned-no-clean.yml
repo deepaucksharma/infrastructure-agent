@@ -1,0 +1,62 @@
+---
+# this is not a test, should be moved away from this folder later
+
+# Linux
+- name: installation-agent-pinned-no-clean
+  hosts: testing_hosts_linux
+  become: true
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Initial cleanup
+      include_role:
+        name: caos.ansible_roles.infra_agent
+      vars:
+        uninstall: true
+
+  tasks:
+    - name: Installation tests suite
+      vars:
+        agent_user: root
+
+      block:
+
+        - name: install agent
+          include_role:
+            name: caos.ansible_roles.infra_agent
+          vars:
+            target_version: "{{ target_agent_version }}"
+
+        - name: Assert version
+          include_role:
+            name: caos.ansible_roles.assert_version
+          vars:
+            target_versions:
+              - exec: "/usr/bin/newrelic-infra --version"
+                version: "{{ target_agent_version }}"
+
+# Windows
+- name: installation-agent-pinned-no-clean
+  hosts: testing_hosts_windows
+  gather_facts: yes
+
+  tasks:
+    - name: Installation tests suite
+
+      block:
+
+        - name: install agent
+          include_role:
+            name: caos.ansible_roles.infra_agent
+          vars:
+            target_version: "{{ target_agent_version }}"
+
+        - name: Assert version
+          include_role:
+            name: caos.ansible_roles.assert_version
+          vars:
+            target_versions:
+              - exec: '"C:\Program Files\New Relic\newrelic-infra\newrelic-infra.exe" "--version"'
+                version: "{{ target_agent_version }}"
+
+...

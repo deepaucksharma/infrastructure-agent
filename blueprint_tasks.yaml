@@ -1,0 +1,29 @@
+# Blueprint to Task mapping
+epics:
+  A1-E0:
+    title: "Process Information Collection"
+    stories:
+      A1-S1:
+        title: "Process Scanner Refactoring"
+        tasks:
+          - slug: process_scanner
+            phase: P0
+            module: collector/
+  A1-E1:
+    title: "Process Collection & Scoring"
+    stories:
+      A1-S3:
+        title: "Adaptive-N Top-Heap"
+        tasks:
+          - slug: topn_sampler
+            phase: P0
+            module: sampler/
+  A2-E1:
+    title: "Statistical Aggregation"
+    stories:
+      A2-S2:
+        title: "DDSketch Implementation"
+        tasks:
+          - slug: ddsketch_impl
+            phase: P0
+            module: sketch/

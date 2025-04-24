@@ -1,0 +1,6 @@
+slug: topn_sampler
+phase: P0
+module: sampler/
+acceptance:
+  - topn_capture_ratio ≥ 95%
+  - sampler CPU ≤ 0.5%

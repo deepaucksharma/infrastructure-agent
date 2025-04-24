@@ -1,0 +1,14 @@
+---
+
+- debug:
+    var: instances_current.results
+
+- debug:
+    var: instances_previous.results
+
+- name: create inventory
+  template:
+    src: "inventory.macos.ec2.j2"
+    dest: "{{ output_inventory }}"
+
+...

@@ -1,0 +1,40 @@
+---
+# this is not a test, should be moved away from this folder later
+
+# Linux
+- name: installation-agent-no-clean
+  hosts: testing_hosts_linux
+  become: true
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Initial cleanup
+      include_role:
+        name: caos.ansible_roles.infra_agent
+      vars:
+        uninstall: true
+        cleanup: true
+
+  tasks:
+    - name: Installation tests suite
+
+      block:
+
+        - name: install agent
+          include_role:
+            name: caos.ansible_roles.infra_agent
+
+# Windows
+- name: installation-agent-no-clean
+  hosts: testing_hosts_windows
+  gather_facts: yes
+
+  tasks:
+    - name: Installation tests suite
+
+      block:
+
+        - name: install agent
+          include_role:
+            name: caos.ansible_roles.infra_agent
+...

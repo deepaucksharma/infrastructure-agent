@@ -1,0 +1,20 @@
+---
+
+- hosts: testing_hosts_linux
+  become: true
+  gather_facts: yes
+
+  tasks:
+      - name: Provision docker canaries
+        vars:
+          agent_user: root
+          env_vars:
+
+        block:
+          - name: provision docker containers
+            include_role:
+              name: caos.ansible_roles.infra_agent
+            vars:
+              is_containerized: true
+
+...

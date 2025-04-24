@@ -1,0 +1,11 @@
+slug: topn_sampler
+phase: P0
+module: sampler/
+blueprint:
+  epic: A1-E1
+  story: A1-S3
+acceptance:
+  - topn_capture_ratio ≥ 95% on replay harness
+  - sampler CPU ≤ 0.5%
+  - heap operations O(k log N) verified by profiling
+  - capture ratio stable under PID churn (2000 PIDs/s)

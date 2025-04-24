@@ -1,0 +1,20 @@
+---
+
+- hosts: testing_hosts_macos
+  become: true
+  gather_facts: yes
+
+  tasks:
+      - name: Installation tests suite
+        vars:
+          agent_user: root
+          env_vars:
+
+        block:
+          - name: install agent
+            include_role:
+              name: caos.ansible_roles.infra_agent
+            vars:
+              self_instrumentation: true
+
+...

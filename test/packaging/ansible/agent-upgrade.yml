@@ -1,0 +1,80 @@
+---
+
+- name: agent-upgrade
+  hosts: testing_hosts_linux
+  become: true
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Initial cleanup
+      include_role:
+        name: caos.ansible_roles.infra_agent
+      vars:
+        uninstall: true
+        fips_enabled: "{{ '-fips' in inventory_hostname }}"
+
+  tasks:
+    - name: agent upgrade tests suite
+      vars:
+        target_agent_version: "1.60.0"
+
+      block:
+
+        - name: install agent
+          include_role:
+            name: caos.ansible_roles.infra_agent
+          vars:
+            target_version: "{{ target_agent_version }}"
+            repo_endpoint: "http://nr-downloads-ohai-staging.s3-website-us-east-1.amazonaws.com/infrastructure_agent"
+            fips_enabled: "{{ '-fips' in inventory_hostname }}"
+
+        - name: Assert version
+          include_role:
+            name: caos.ansible_roles.assert_version
+          vars:
+            target_versions:
+              - exec: "/usr/bin/newrelic-infra --version"
+                version: "{{ target_agent_version }}"
+
+        - name: get initial agent PID
+          command: pgrep -f newrelic-infra-service
+          register: agent_pid
+
+        - name: install latest agent
+          include_role:
+            name: caos.ansible_roles.infra_agent
+          vars:
+            install_only_if_present: "yes"
+            fips_enabled: "{{ '-fips' in inventory_hostname }}"
+
+        - name: assert service countinues running after upgrade
+          include_role:
+            name: caos.ansible_roles.assert_service_status
+          vars:
+            services_running:
+              - "newrelic-infra.service"
+
+        - name: get agent PID after upgrade
+          command: pgrep -f newrelic-infra-service
+          register: updated_agent_pid
+
+        - name: assert agent has been reloaded
+          assert:
+            that: agent_pid.stdout != updated_agent_pid.stdout
+
+        - name: register installed version
+          shell: "newrelic-infra --version | egrep -o 'New Relic Infrastructure Agent version: [0-9\\.]+' | egrep -o '[0-9\\.]+'"
+          register: installed_version
+
+        - name: assert installed version is bigger than initial version
+          assert:
+            that: "{{ installed_version.stdout is version(target_agent_version, '>') }}"
+
+      always:
+        - name: Final cleanup
+          include_role:
+            name: caos.ansible_roles.infra_agent
+          vars:
+            uninstall: true
+            fips_enabled: "{{ '-fips' in inventory_hostname }}"
+...

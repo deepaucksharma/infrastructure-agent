@@ -1,0 +1,10 @@
+# map ansible detected architectures with GOARCH values
+architecture_map:
+  x86_64: "amd64"
+  aarch64: "arm64"
+  arm64: "arm64"
+  64-bit: "amd64"
+
+os_arch_binary_name_tpl: "harvest_%GOOS%_%GOARCH%.test{{ '.exe' if ansible_system == 'Win32NT' else '' }}"
+os_arch_binary_name_tpl_fips: "harvest_%GOOS%-fips_%GOARCH%.test{{ '.exe' if ansible_system == 'Win32NT' else '' }}"
+tests_to_run_regex: ".*"

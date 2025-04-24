@@ -1,0 +1,13 @@
+slug: process_scanner
+phase: P0
+module: collector/
+blueprint:
+  epic: A1-E0
+  story: A1-S1
+acceptance:
+  - gather process information (PID, name, command, CPU, RSS) from host
+  - handle process lifecycle events (creation, termination)
+  - limit CPU usage to ≤ 0.75% during scanning
+  - handle up to 3000 processes without performance degradation
+  - deliver process updates to registered consumers
+  - provide proper error handling for platform-specific operations

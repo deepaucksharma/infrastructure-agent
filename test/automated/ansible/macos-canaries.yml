@@ -1,0 +1,22 @@
+---
+
+- hosts: localhost
+  become: false
+  gather_facts: no
+
+  tasks:
+    - name: fetch macos canaries instances
+      include_role:
+        name: fetch-macos-canary
+
+    - name: prepare macos canaries inventory data
+      vars:
+        username: administrator
+      include_role:
+        name: prepare-macos-canaries-inventory
+
+    - name: create macos canaries inventory
+      vars:
+        output_inventory: "{{ output_inventory_macos | default('inventory.macos.ec2') }}"
+      include_role:
+        name: create-macos-inventory

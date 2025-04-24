@@ -1,0 +1,4 @@
+BenchmarkProcessHeap_Update-8   	  500000	      3012 ns/op	     168 B/op	      3 allocs/op
+BenchmarkProcessHeap_TopN-8     	   50000	     35621 ns/op	    8192 B/op	       1 allocs/op
+BenchmarkTopNSampler_Update-8   	    5000	    294532 ns/op	   25600 B/op	     400 allocs/op
+BenchmarkTopNSampler_GetTopN-8  	  200000	      8532 ns/op	    4096 B/op	      1 allocs/op

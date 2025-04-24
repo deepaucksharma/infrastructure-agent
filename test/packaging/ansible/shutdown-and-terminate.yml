@@ -1,0 +1,140 @@
+---
+
+- name: Install agent linux (HNR)
+  hosts: testing_hosts_linux
+  gather_facts: true
+  become: true
+  vars:
+    agent_user: root
+
+  pre_tasks:
+    - name: Initial cleanup
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.infra_agent
+      vars:
+        uninstall: true
+        fips_enabled: "{{ '-fips' in inventory_hostname }}"
+
+  tasks:
+    - name: Install agent
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.infra_agent
+      vars:
+        display_name: "{{ iid }}:{{ inventory_hostname }}"
+        repo_endpoint: "http://nr-downloads-ohai-staging.s3-website-us-east-1.amazonaws.com/infrastructure_agent"
+        fips_enabled: "{{ '-fips' in inventory_hostname }}"
+
+- name: Install agent windows  (HNR)
+  hosts: testing_hosts_windows
+  gather_facts: true
+
+  pre_tasks:
+    - name: Initial cleanup
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.infra_agent
+      vars:
+        uninstall: true
+
+  tasks:
+    - name: Install agent
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.infra_agent
+      vars:
+        display_name: "{{ iid }}:{{ inventory_hostname }}"
+
+
+- name: Test agent behaviour on host shutdown
+  hosts: testing_hosts
+  vars:
+    # Add here hosts of the instances that doesn't support Smart HNR (shutdown detection) e.g. - "amd64:ubuntu14.04"
+    instances_not_supporting_shutdown_detection: {
+      "amd64:debian-jessie"
+    }
+
+    host_supports_shutdown_detection: >-
+      {{
+        true if inventory_hostname not in instances_not_supporting_shutdown_detection
+        else false
+      }}
+
+  tasks:
+    - name: Pause a bit to let the agent send some data
+      ansible.builtin.pause:
+        minutes: 1
+
+    - name: Restart the agent
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.service_status
+      vars:
+        service_name: "newrelic-infra"
+        action: "restart"
+
+    - name: Pause for a bit to let the agent initialize
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Get entity id
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.infra_agent_get_entity_id
+
+    - name: Assert agent restart don't trigger shutdown event
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.assert_host_status_event
+      vars:
+        host_status: "shutdown"
+        expect_change_event: false
+        since_sec_ago: 30
+
+    - name: Stop instances
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.ec2_instance
+      vars:
+        action: stop
+        instance_id: "{{ iid }}"
+
+    - name: Pause for a bit to let the event fire
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Assert that the agent detecteded host shutdown and disconnected from the backend (only on hosts that support shutdown detection)
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.assert_host_status_event
+      vars:
+        host_status: "shutdown"
+        expect_change_event: "{{ host_supports_shutdown_detection }}"
+        timestamp_ref: "{{ ec2_stop_time_sec | int }}"
+
+    - name: Start instances
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.ec2_instance
+      vars:
+        action: start
+        instance_id: "{{ iid }}"
+
+    - name: Assert the agent performed connect to the backend (only on hosts that support shutdown detection)
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.assert_host_status_event
+      vars:
+        host_status: "running"
+        expect_change_event: "{{ host_supports_shutdown_detection }}"
+        timestamp_ref: "{{ ec2_start_time_sec | int }}"
+
+    - name: Terminate instances
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.ec2_instance
+      vars:
+        action: terminate
+        instance_id: "{{ iid }}"
+
+    - name: Pause for a bit to let the event fire
+      ansible.builtin.pause:
+        seconds: 30
+
+    - name: Assert that the agent detecteded host termination and disconnected from the backend (only on hosts that support shutdown detection)
+      ansible.builtin.include_role:
+        name: caos.ansible_roles.assert_host_status_event
+      vars:
+        host_status: "shutdown"
+        expect_change_event: "{{ host_supports_shutdown_detection }}"
+        timestamp_ref: "{{ ec2_terminate_time_sec | int }}"
+...

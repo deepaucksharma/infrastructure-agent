@@ -1,0 +1,158 @@
+// Copyright 2020 New Relic Corporation. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+//go:build linux || darwin
+// +build linux darwin
+
+package linux
+
+import (
+	"bufio"
+	"github.com/newrelic/infrastructure-agent/internal/agent/types"
+	"github.com/newrelic/infrastructure-agent/pkg/entity"
+	"os/exec"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/newrelic/infrastructure-agent/pkg/log"
+
+	"github.com/newrelic/infrastructure-agent/pkg/sysinfo"
+
+	"github.com/newrelic/infrastructure-agent/pkg/plugins/ids"
+
+	"github.com/newrelic/infrastructure-agent/internal/agent"
+	"github.com/newrelic/infrastructure-agent/pkg/config"
+	"github.com/newrelic/infrastructure-agent/pkg/helpers"
+)
+
+var ulog = log.WithPlugin("Upstart")
+
+type UpstartPlugin struct {
+	agent.PluginCommon
+	runningServices map[string]UpstartService
+	frequency       time.Duration
+}
+
+type UpstartService struct {
+	Name string `json:"id"`
+	Pid  string `json:"pid"`
+}
+
+func (us UpstartService) SortKey() string {
+	return us.Name
+}
+
+func (up UpstartPlugin) getUpstartDataset() types.PluginInventoryDataset {
+	var dataset types.PluginInventoryDataset
+
+	for _, v := range up.runningServices {
+		dataset = append(dataset, v)
+	}
+
+	return dataset
+}
+
+func (up UpstartPlugin) getUpstartPidMap() map[int]string {
+	result := make(map[int]string)
+
+	for _, v := range up.runningServices {
+		pid, err := strconv.Atoi(v.Pid)
+		if err == nil {
+			result[pid] = v.Name
+		}
+	}
+
+	return result
+}
+
+func (up *UpstartPlugin) getUpstartServiceStatus() {
+	output, err := helpers.RunCommand("/sbin/initctl", "", "list")
+	if err != nil {
+		ulog.WithError(err).Error("unable to get upstart service status")
+	}
+
+	reService := regexp.MustCompile(`(\S+).*?(start|stop)\/(.*)`)
+	rePid := regexp.MustCompile(`process\s+(\d+)`)
+
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		// first up parse out the service name and status
+		line := scanner.Text()
+		matches := reService.FindStringSubmatch(line)
+
+		var name, status, rest string
+
+		if len(matches) == 4 {
+			name = matches[1]
+			status = matches[2]
+			rest = matches[3]
+		} else {
+			ulog.WithField("line", line).Warn("unexpected line from initctl")
+		}
+
+		var pid = "unknown"
+
+		// try and extract a pid if it is listed
+		matches = rePid.FindStringSubmatch(rest)
+		if len(matches) == 2 {
+			pid = matches[1]
+		}
+
+		// based on status add or remove service from state map
+		switch status {
+		case "start":
+			up.runningServices[name] = UpstartService{name, pid}
+		case "stop":
+			delete(up.runningServices, name)
+		}
+	}
+}
+
+func upstartPresentAndWorking() bool {
+	_, err := exec.LookPath("initctl")
+	_, err = helpers.RunCommand("/sbin/initctl", "", "list")
+	if err != nil {
+		ulog.WithError(err).Debug("Can't find Upstart.")
+	}
+	return err == nil
+}
+
+func NewUpstartPlugin(id ids.PluginID, ctx agent.AgentContext) agent.Plugin {
+	cfg := ctx.Config()
+	return &UpstartPlugin{
+		PluginCommon:    agent.PluginCommon{ID: id, Context: ctx},
+		runningServices: make(map[string]UpstartService),
+		frequency: config.ValidateConfigFrequencySetting(
+			cfg.UpstartIntervalSec,
+			config.FREQ_MINIMUM_FAST_INVENTORY_SAMPLE_RATE,
+			config.FREQ_PLUGIN_UPSTART_UPDATES,
+			cfg.DisableAllPlugins,
+		) * time.Second,
+	}
+}
+
+func (up *UpstartPlugin) Run() {
+	if up.frequency <= config.FREQ_DISABLE_SAMPLING {
+		ulog.Debug("Disabled.")
+		return
+	}
+
+	if upstartPresentAndWorking() {
+		refreshTimer := time.NewTicker(1)
+		for {
+			select {
+			case <-refreshTimer.C:
+				{
+					refreshTimer.Stop()
+					refreshTimer = time.NewTicker(up.frequency)
+					up.getUpstartServiceStatus()
+					up.EmitInventory(up.getUpstartDataset(), entity.NewFromNameWithoutID(up.Context.EntityKey()))
+					up.Context.CacheServicePids(sysinfo.PROCESS_NAME_SOURCE_UPSTART, up.getUpstartPidMap())
+				}
+			}
+		}
+	} else {
+		up.Unregister()
+	}
+}

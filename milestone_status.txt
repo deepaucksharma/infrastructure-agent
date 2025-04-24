@@ -1,0 +1,16 @@
+# Blueprint Milestone Status
+Generated: April 25, 2025
+
+| Milestone | Description | Status | Date |
+|-----------|-------------|--------|------|
+| M1 | Process scanner refactored | ⏳ PENDING | - |
+| M2 | Top-N sampler implemented | ✅ COMPLETE | April 25, 2025 |
+| M3 | DDSketch integration complete | ✅ COMPLETE | April 25, 2025 |
+| M4 | OTLP exporter functional | ⏳ PENDING | - |
+| M5 | Watchdog module complete | ⏳ PENDING | - |
+
+## Overall Progress
+* Completed: 2 of 5 milestones
+* Progress: 40%
+
+## Project Status: 🔄 IN PROGRESS

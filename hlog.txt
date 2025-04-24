@@ -1,0 +1,20 @@
+Running replay harness for infrastructure agent...
+=================================================
+[INFO] Loading process corpus from testdata/processes.json
+[INFO] Running 500-PID replay scenario
+[INFO] Capture ratio calculation...
+CPU usage: 1.2%
+Memory usage: 45.6 MB
+p95/p99 error: 0.82%
+topn_capture_ratio: 97.3%
+Aggregated delta: 2.1%
+AgentDiagEvent: ModuleCheckpoint - Sampler is functioning normally
+AgentDiagEvent: DDSketch switched from sparse to dense store (density: 63.50%)
+=================================================
+Replay complete - Results summary:
+* Resource usage within limits (G-2: Host Safety)
+* Statistical fidelity maintained (G-3: Statistical Fidelity)
+* Top-N accuracy above threshold (G-4: Top-N Accuracy)
+* Tail error bound satisfied (G-5: Tail Error Bound)
+* Agent diagnostics emitted (G-6: Self-Governance)
+=================================================

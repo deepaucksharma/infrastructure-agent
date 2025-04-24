@@ -1,0 +1,123 @@
+// Copyright 2020 New Relic Corporation. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+package testing
+
+import (
+	"context"
+	"github.com/newrelic/infrastructure-agent/internal/agent/types"
+	"time"
+
+	"github.com/newrelic/infrastructure-agent/pkg/entity/host"
+	"github.com/newrelic/infrastructure-agent/pkg/sysinfo"
+
+	"github.com/newrelic/infrastructure-agent/internal/agent"
+	"github.com/newrelic/infrastructure-agent/pkg/config"
+	"github.com/newrelic/infrastructure-agent/pkg/entity"
+	"github.com/newrelic/infrastructure-agent/pkg/plugins/ids"
+	"github.com/newrelic/infrastructure-agent/pkg/sample"
+	"github.com/newrelic/infrastructure-agent/pkg/sysinfo/cloud"
+	"github.com/newrelic/infrastructure-agent/pkg/sysinfo/hostname"
+
+	. "gopkg.in/check.v1"
+)
+
+type MockAgent struct {
+	ch         chan types.PluginOutput
+	registered bool
+	cfg        *config.Config
+	entities   chan string
+	resolver   hostname.Resolver
+}
+
+func (m *MockAgent) HostnameResolver() hostname.Resolver {
+	return m.resolver
+}
+
+func (m *MockAgent) Identity() entity.Identity {
+	return entity.Identity{
+		ID:   entity.ID(1337),
+		GUID: "VGhpcyBpcyBhIE1vY2tBZ2VudCB1c2VkIGZvciB0ZXN0aW5nIG9ubHk=",
+	}
+}
+
+func NewMockAgent() *MockAgent {
+	return &MockAgent{
+		registered: true,
+		ch:         make(chan types.PluginOutput, 1),
+		cfg: &config.Config{
+			SupervisorRefreshSec: 1,
+			SupervisorRpcSocket:  "/tmp/supervisor.sock.test",
+		},
+		entities: make(chan string, 1000),
+		resolver: hostname.CreateResolver("", "", true),
+	}
+}
+
+func (m *MockAgent) Context() context.Context {
+	return context.TODO()
+}
+
+func (m *MockAgent) ActiveEntitiesChannel() chan string {
+	return m.entities
+}
+
+func (self *MockAgent) WithConfig(cfg *config.Config) *MockAgent {
+	self.cfg = cfg
+	return self
+}
+
+func (self *MockAgent) GetData(c *C) (output types.PluginOutput) {
+	select {
+	case output = <-self.ch:
+	case <-time.After(50 * time.Millisecond):
+		c.Fatalf("Timeout waiting on agent data from channel %#v", self.ch)
+	}
+	return
+}
+
+func (self *MockAgent) SendData(data types.PluginOutput) {
+	self.ch <- data
+}
+
+func (self *MockAgent) SendEvent(event sample.Event, entityKey entity.Key) {
+	// Not implemented yet
+}
+
+func (self *MockAgent) Unregister(id ids.PluginID) {
+	self.registered = false
+	self.ch <- types.NewNotApplicableOutput(id)
+}
+
+func (self *MockAgent) Config() *config.Config {
+	return self.cfg
+}
+
+func (self *MockAgent) EntityKey() string {
+	return ""
+}
+
+func (self *MockAgent) Version() string {
+	return "mock"
+}
+
+func (self *MockAgent) CacheServicePids(source string, pidMap map[int]string) {
+	return
+}
+
+func (self *MockAgent) GetServiceForPid(pid int) (service string, ok bool) {
+	return
+}
+
+func (self *MockAgent) CloudDetector() *cloud.Detector {
+	return cloud.NewDetector(true, 0, 0, 0, false)
+}
+
+func (m *MockAgent) AddReconnecting(agent.Plugin) {}
+
+func (m *MockAgent) Reconnect() {}
+
+func (m *MockAgent) IDLookup() host.IDLookup {
+	idLookupTable := make(host.IDLookup)
+	idLookupTable[sysinfo.HOST_SOURCE_HOSTNAME_SHORT] = "short_hostname"
+	return idLookupTable
+}

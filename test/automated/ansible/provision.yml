@@ -1,0 +1,16 @@
+---
+
+- hosts: localhost
+  become: false
+  gather_facts: yes
+
+  tasks:
+    - name: provision ec2 instances
+      include_role:
+        name: provision-ec2
+
+    - name: create inventory
+      vars:
+        output_inventory: "{{ output_inventory_ext | default('inventory.ec2') }}"
+      include_role:
+        name: create-inventory

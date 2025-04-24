@@ -1,0 +1,31 @@
+---
+
+- name: installation-newrelic-cli
+  hosts: testing_hosts_linux
+  become: true
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Initial cleanup
+      include_role:
+        name: caos.ansible_roles.infra_agent
+      vars:
+        uninstall: true
+
+  tasks:
+    - name: Installation tests suite
+      block:
+
+        - name: install agent via newrelic-cli
+          include_role:
+            name: caos.ansible_roles.newrelic_cli
+
+        - name: assert service countinues running after upgrade
+          include_role:
+            name: caos.ansible_roles.assert_service_status
+          vars:
+            services_running:
+              - "newrelic-infra.service"
+
+
+...

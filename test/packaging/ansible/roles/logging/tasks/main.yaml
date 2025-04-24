@@ -1,0 +1,14 @@
+---
+
+- name: Assert that multiple versions (td-agent-bit and fluent-bit) are installed in linux
+  include_tasks: "multiple_version_assertion_{{ ansible_os_family }}.yaml"
+  when: ansible_system == "Linux"
+
+- name: Assert that multiple versions (td-agent-bit and fluent-bit) are installed in windows
+  include_tasks: "multiple_version_assertion_{{ ansible_system }}.yaml"
+  when: ansible_system == "Win32NT"
+
+- name: Assert process is running
+  include_tasks: "process_running_{{ ansible_system }}.yaml"
+
+...
