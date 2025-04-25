@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # OpenTelemetry Collector for testing OTLP exporter
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: otel-collector-test
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./config/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Metrics endpoint
+    networks:
+      - test-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8888/metrics"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Prometheus for metrics collection and visualization
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-test
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - test-network
+    depends_on:
+      - otel-collector
+
+  # Process load simulator for testing scanner under high load
+  load-simulator:
+    image: ubuntu:latest
+    container_name: load-simulator
+    command: >
+      bash -c "apt-get update && apt-get install -y stress-ng &&
+              stress-ng --cpu 2 --vm 1 --vm-bytes 256M --fork 4 --timeout 300s"
+    networks:
+      - test-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+
+  # High cardinality process generator
+  process-generator:
+    image: ubuntu:latest
+    container_name: process-generator
+    command: >
+      bash -c "apt-get update && apt-get install -y procps &&
+              for i in {1..300}; do 
+                for j in {1..5}; do
+                  (echo $$-$i-$j && sleep 0.5 &);
+                done;
+                sleep 1;
+              done"
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge

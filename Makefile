@@ -1,22 +1,3 @@
-<<<<<<< HEAD
-lint:
-	cd infrastructure-agent && golangci-lint run ./...
-
-test:
-	cd infrastructure-agent && go test ./... -race -cover
-
-bench:
-	cd infrastructure-agent && go test -run=^$ -bench=. ./sampler/... ./sketch/... > ../_bench.txt
-
-harness:
-	cd infrastructure-agent-testbed && ./run_replay.sh
-
-integration:
-	cd infrastructure-agent-testbed && ./run_integration.sh
-
-verify:
-	./scripts/checkpoint.sh
-=======
 # Standard variables defining directories and other useful stuff.
 PROJECT_WORKSPACE	?= $(CURDIR)
 INCLUDE_BUILD_DIR	?= $(PROJECT_WORKSPACE)/build
@@ -52,10 +33,29 @@ include $(INCLUDE_BUILD_DIR)/release.mk
 # test
 include $(INCLUDE_TEST_DIR)/common.mk
 include $(INCLUDE_TEST_DIR)/test.mk
+include $(INCLUDE_TEST_DIR)/Makefile.testing
 
 # tools
 include $(INCLUDE_TOOLS_DIR)/tools.mk
 
 # common utils
 include ./Makefile.Common
->>>>>>> 468982fcd8287f8efcf4c6f1ea892cea61ec9e8a
+
+# Basic testing targets
+lint:
+	golangci-lint run ./...
+
+test:
+	$(GO_BIN) test ./... -race -cover
+
+bench:
+	$(GO_BIN) test -run=^$ -bench=. ./sampler/... ./sketch/... > ./_bench.txt
+
+harness:
+	$(CURDIR)/test/system/scripts/run_replay.sh
+
+integration:
+	$(CURDIR)/test/system/scripts/run_integration.sh
+
+verify:
+	$(CURDIR)/scripts/checkpoint.sh

@@ -1,0 +1,73 @@
+# Testing Makefile for Infrastructure Agent
+# Extends the existing test infrastructure with comprehensive component, integration,
+# and system tests for the process scanner, OTLP exporter, and watchdog modules.
+
+.PHONY: test-component test-integration test-system-short test-system-full test-all test-stability
+
+# Path to Go executable
+GO_BIN ?= go
+
+# Coverage output file
+COVERAGE_FILE ?= coverage.out
+
+# Component tests
+test-component:
+	@echo "Running component tests..."
+	$(GO_BIN) test -tags=component ./collector/... ./export/... ./watchdog/... -race -cover -coverprofile=component.out
+	@echo "Component tests completed."
+
+# Integration tests
+test-integration:
+	@echo "Running integration tests..."
+	$(GO_BIN) test -tags=integration ./test/integration/... -race -cover -coverprofile=integration.out
+	@echo "Integration tests completed."
+
+# System tests (short mode)
+test-system-short:
+	@echo "Running system tests in short mode..."
+	$(GO_BIN) test -tags=system ./test/system/... -race -cover -coverprofile=system.out -short
+	@echo "System tests (short mode) completed."
+
+# Full system tests (long)
+test-system-full:
+	@echo "Running full system tests (this may take a while)..."
+	$(GO_BIN) test -tags=system ./test/system/... -race -cover -coverprofile=system.out -timeout 30m
+	@echo "Full system tests completed."
+
+# Complete test suite (excluding long stability tests)
+test-all: test-component test-integration test-system-short
+	@echo "Generating combined coverage report..."
+	$(GO_BIN) tool cover -html=component.out -o component-coverage.html
+	$(GO_BIN) tool cover -html=integration.out -o integration-coverage.html
+	$(GO_BIN) tool cover -html=system.out -o system-coverage.html
+	@echo "All tests completed successfully!"
+
+# Long-running stability test (only run on dedicated machines)
+test-stability:
+	@echo "Running long-running stability test (4+ hours)..."
+	RUN_STABILITY_TEST=true $(GO_BIN) test -tags=system -run=TestSystem_LongRunningStability -v -timeout 5h
+	@echo "Stability test completed."
+
+# G-Goal validation test
+test-g-goals:
+	@echo "Running G-Goal validation tests..."
+	$(GO_BIN) test -tags=system -run=TestSystem_ProcessScanner_GGoalValidation -v
+	@echo "G-Goal validation completed."
+
+# Test with high process load
+test-high-load:
+	@echo "Running high-load tests..."
+	$(GO_BIN) test -tags=system -run=TestSystem_ProcessScanner_HighLoad -v
+	@echo "High-load tests completed."
+
+# Help target
+help:
+	@echo "Infrastructure Agent Testing Targets:"
+	@echo "  test-component    - Run component tests (mocked dependencies)"
+	@echo "  test-integration  - Run integration tests (components working together)"
+	@echo "  test-system-short - Run system tests in short mode (faster)"
+	@echo "  test-system-full  - Run full system tests (comprehensive)"
+	@echo "  test-all          - Run all tests except stability tests"
+	@echo "  test-stability    - Run long-running stability test (4+ hours)"
+	@echo "  test-g-goals      - Run specific G-Goal validation tests"
+	@echo "  test-high-load    - Run high-load tests"
